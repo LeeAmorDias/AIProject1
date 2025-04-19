@@ -3,6 +3,7 @@ using UnityEngine.AI;
 
 public class AgentController : MonoBehaviour
 {
+    private enum ActionType { Eat, Rest, Fun }
     [SerializeField]
     private BoxCollider area;
     [SerializeField]
@@ -23,6 +24,9 @@ public class AgentController : MonoBehaviour
     private int pushes = 0; 
     private bool stopped = false;   
 
+    private ActionType AgentState;
+    
+
 
     void Start()
     {
@@ -31,6 +35,7 @@ public class AgentController : MonoBehaviour
         RandomizeHungerAndTiredness();
         FindHungerLevel();
         FindTirednessLevel();
+        AgentState = FindWhatToDo();
     }
 
     private Vector3 FindMostIsolatedSpot()
@@ -153,6 +158,43 @@ public class AgentController : MonoBehaviour
         else
             tirednessLevel = 5;
     }
+    private int GetLevelWeight(int level)
+    {
+        if (level == 5) return 5; // special case, return 5 for 100% action
+        switch (level)
+        {
+            case 4: return 9; 
+            case 3: return 4;
+            case 2: return 2;
+            case 1: return 0;
+            default: return 0;
+        }
+    }
+    private ActionType FindWhatToDo(){
+        if (hungerLevel == 5 && tirednessLevel != 5)
+            return ActionType.Eat;
+
+        if (tirednessLevel == 5 && hungerLevel != 5)
+            return ActionType.Rest;
+
+        if (hungerLevel == 5 && tirednessLevel == 5)
+            return Random.value < 0.5f ? ActionType.Eat : ActionType.Rest;
+
+        int eatWeight = GetLevelWeight(hungerLevel);
+        int restWeight = GetLevelWeight(tirednessLevel);
+        int funWeight = Mathf.Max(10 - (eatWeight + restWeight), 0);
+
+        int total = eatWeight + restWeight + funWeight;
+        int roll = Random.Range(0, total);
+
+        if (roll < eatWeight)
+            return ActionType.Eat;
+        else if (roll < eatWeight + restWeight)
+            return ActionType.Rest;
+        else
+            return ActionType.Fun;
+        
+    } 
     /// <summary>
     /// Randomizes the Hunger and rest but always something greater than 3/4 of the max because everybody comes in with a different amount of hunger and tiredness.
     /// </summary>
