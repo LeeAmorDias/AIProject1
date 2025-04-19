@@ -26,8 +26,11 @@ public class AgentController : MonoBehaviour
 
     void Start()
     {
-        Vector3 bestSpot = FindMostIsolatedSpot();
-        agent.SetDestination(bestSpot);
+        hunger = maxHunger;
+        tiredness = maxTiredness;
+        RandomizeHungerAndTiredness();
+        FindHungerLevel();
+        FindTirednessLevel();
     }
 
     private Vector3 FindMostIsolatedSpot()
@@ -122,6 +125,34 @@ public class AgentController : MonoBehaviour
         Debug.Log("Agent stopped: already in target area.");
     }
 
+    private void FindHungerLevel(){
+        float hungerPercent = (hunger / maxHunger) * 100f;
+        if (hungerPercent >= 80f)
+            hungerLevel = 1;
+        else if (hungerPercent >= 50f)
+            hungerLevel = 2;
+        else if (hungerPercent >= 30f)
+            hungerLevel = 3;
+        else if (hungerPercent >= 10f)
+            hungerLevel = 4;
+        else
+            hungerLevel = 5;
+    }
+    
+    private void FindTirednessLevel(){
+        float tirednessPercent = (tiredness / maxTiredness) * 100f;
+
+        if (tirednessPercent >= 80f)
+            tirednessLevel = 1;
+        else if (tirednessPercent >= 50f)
+            tirednessLevel = 2;
+        else if (tirednessPercent >= 30f)
+            tirednessLevel = 3;
+        else if (tirednessPercent >= 10f)
+            tirednessLevel = 4;
+        else
+            tirednessLevel = 5;
+    }
     /// <summary>
     /// Randomizes the Hunger and rest but always something greater than 3/4 of the max because everybody comes in with a different amount of hunger and tiredness.
     /// </summary>
