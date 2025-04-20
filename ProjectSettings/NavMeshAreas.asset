@@ -11,15 +11,15 @@ NavMeshProjectSettings:
     cost: 1
   - name: Jump
     cost: 2
-  - name: Stage1
+  - name: 
     cost: 1
-  - name: Stage2
+  - name: 
     cost: 1
-  - name: GreenArea1
+  - name: 
     cost: 1
-  - name: GreenArea2
+  - name: 
     cost: 1
-  - name: Restoration
+  - name: 
     cost: 1
   - name: 
     cost: 1
