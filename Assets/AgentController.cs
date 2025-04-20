@@ -3,9 +3,8 @@ using UnityEngine.AI;
 
 public class AgentController : MonoBehaviour
 {
-    private enum ActionType { Eat, Rest, Fun }
-    [SerializeField]
-    private BoxCollider area;
+    private enum ActionType { Eating, Resting, Partying }
+
     [SerializeField]
     private float samplingRadius = 10f;
     [SerializeField]
@@ -16,6 +15,9 @@ public class AgentController : MonoBehaviour
     private int maxHunger = 100;
     [SerializeField]
     private int maxTiredness = 100;
+
+    private BoxCollider areaToGo;
+    private Rooms currentArea;
     private int hunger;
     private int tiredness;
     private int hungerLevel;
@@ -80,7 +82,7 @@ public class AgentController : MonoBehaviour
 
     private Vector3 GetRandomPointInArea()
     {
-        Bounds bounds = area.bounds;
+        Bounds bounds = areaToGo.bounds;
         return new Vector3(
             Random.Range(bounds.min.x, bounds.max.x),
             bounds.center.y,
@@ -107,7 +109,7 @@ public class AgentController : MonoBehaviour
 
     bool IsInsideDesiredArea()
     {
-        Vector3 closest = area.ClosestPoint(transform.position);
+        Vector3 closest = areaToGo.ClosestPoint(transform.position);
 
         // Ignore Y axis and just check horizontal distance
         Vector2 agentPos2D = new Vector2(transform.position.x, transform.position.z);
@@ -172,13 +174,13 @@ public class AgentController : MonoBehaviour
     }
     private ActionType FindWhatToDo(){
         if (hungerLevel == 5 && tirednessLevel != 5)
-            return ActionType.Eat;
+            return ActionType.Eating;
 
         if (tirednessLevel == 5 && hungerLevel != 5)
-            return ActionType.Rest;
+            return ActionType.Resting;
 
         if (hungerLevel == 5 && tirednessLevel == 5)
-            return Random.value < 0.5f ? ActionType.Eat : ActionType.Rest;
+            return Random.value < 0.5f ? ActionType.Eating : ActionType.Resting;
 
         int eatWeight = GetLevelWeight(hungerLevel);
         int restWeight = GetLevelWeight(tirednessLevel);
@@ -188,11 +190,11 @@ public class AgentController : MonoBehaviour
         int roll = Random.Range(0, total);
 
         if (roll < eatWeight)
-            return ActionType.Eat;
+            return ActionType.Eating;
         else if (roll < eatWeight + restWeight)
-            return ActionType.Rest;
+            return ActionType.Resting;
         else
-            return ActionType.Fun;
+            return ActionType.Partying;
         
     } 
     /// <summary>
