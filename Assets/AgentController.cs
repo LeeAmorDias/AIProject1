@@ -292,6 +292,7 @@ public class AgentController : MonoBehaviour
             }
         }
         int roomnumber = Random.Range(0, matchingRooms.Count);
+        Debug.Log(roomnumber);
         currentArea = matchingRooms[roomnumber];
         GetAreaInfo();
     }
