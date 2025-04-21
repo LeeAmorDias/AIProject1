@@ -21,13 +21,17 @@ public class AgentController : MonoBehaviour
     [SerializeField]
     private float timePerUpdate;
     [SerializeField]
-    private int MinAmountOfHungerToTakePerUpdate;
+    private int minAmountOfHungerToTakePerUpdate;
     [SerializeField]
-    private int MaxAmountOfHungerToTakePerUpdate;
+    private int maxAmountOfHungerToTakePerUpdate;
     [SerializeField]
-    private int MinAmountOfTirednessToTakePerUpdate;
+    private int minAmountOfTirednessToTakePerUpdate;
     [SerializeField]
-    private int MaxAmountOfTirednessToTakePerUpdate;
+    private int maxAmountOfTirednessToTakePerUpdate;
+    [SerializeField]
+    private int maxHungerToRemoveAtStart;
+    [SerializeField]
+    private int maxTirednessToRemoveAtStart;
 
     private BoxCollider areaToGo;
     private Rooms currentArea;
@@ -43,27 +47,33 @@ public class AgentController : MonoBehaviour
 
     private Rooms.whatCanDo AgentState;
 
-    private GameObject parentAreas;
-    private List<Rooms> allAreas = new List<Rooms>();
+    private AreasController parentAreas;
     private float timePassed;
     
 
-
+    /// <summary>
+    /// gets the parent of all areas, sets the hunger and tiredness to its max then takes a random amount of both because everyone will have a different amount of each 
+    /// then finds the hunger/tiredness level and the updates the agents state then gets the area the agent should go and then sends him there.
+    /// </summary>
     private void Awake()
     {
-        parentAreas = GameObject.Find("Areas");
-        GetAllAreas();
+        parentAreas = GameObject.FindFirstObjectByType<AreasController>();
         hunger = maxHunger;
         tiredness = maxTiredness;
         RandomizeHungerAndTiredness();
-        FindHungerLevel();
-        FindTirednessLevel();
+        hungerLevel = FindLevel(hunger, maxHunger);
+        tirednessLevel = FindLevel(tiredness, maxTiredness);
         AgentState = FindWhatToDo();
-        DoAgentState();
+        GetAreaInfo();
         Vector3 bestSpot = FindMostIsolatedSpot();
         agent.SetDestination(bestSpot);
     }
 
+    /// <summary>
+    /// updates the agent then checks if the agent is where he wants to be and hasnt passed the time he intended to pass there and if thats the case 
+    /// it will just count down the time until he spent the time he wants on the area or else it will update the hunger/tiredness level and then updates the agents state 
+    /// then gets the area the agent should go and then sends him there.
+    /// </summary>
     private void Update()
     {
         UpdateAgent();
@@ -71,23 +81,31 @@ public class AgentController : MonoBehaviour
             CountTimeToSpendInArea();
             
         }else if(timeToSpendInArea <= 0){
-            FindHungerLevel();
-            FindTirednessLevel();
+            pushes = 0;
+            hungerLevel = FindLevel(hunger, maxHunger);
+            tirednessLevel = FindLevel(tiredness, maxTiredness);
             AgentState = FindWhatToDo();
-            DoAgentState();
+            GetAreaInfo();
             Vector3 bestSpot = FindMostIsolatedSpot();
             agent.SetDestination(bestSpot);
         }
 
     }
+    /// <summary>
+    /// checks if enough time has passed to take out hunger and tiredness from the agent but of course if the agent is resting he will not be taken out any tiredness.
+    /// </summary>
     private void UpdateAgent(){
         timePassed += Time.deltaTime;
         if(timePassed > timePerUpdate){
             timePassed = 0;
             if(currentArea.WhatToDo != Rooms.whatCanDo.Eat)
-                hunger -= Random.Range(MinAmountOfHungerToTakePerUpdate, MaxAmountOfHungerToTakePerUpdate);
+                hunger -= Random.Range(minAmountOfHungerToTakePerUpdate, maxAmountOfHungerToTakePerUpdate);
+            else 
+                hunger = 100;
             if(currentArea.WhatToDo != Rooms.whatCanDo.Rest)
-                tiredness -= Random.Range(MinAmountOfTirednessToTakePerUpdate, MaxAmountOfTirednessToTakePerUpdate);
+                tiredness -= Random.Range(minAmountOfTirednessToTakePerUpdate, maxAmountOfTirednessToTakePerUpdate);
+            else 
+                tiredness = 100;
         }
         if(hunger <= 0){
             hunger = 0;
@@ -96,10 +114,16 @@ public class AgentController : MonoBehaviour
             tiredness = 0;
         }
     }
+    /// <summary>
+    /// counts down the time he intends to spend per area.
+    /// </summary>
     private void CountTimeToSpendInArea(){
         timeToSpendInArea -= Time.deltaTime;
     }
-
+    /// <summary>
+    /// tries to find the most isolated spot around the area it was sent. 
+    /// </summary>
+    /// <returns></returns>
     private Vector3 FindMostIsolatedSpot()
     {
         Vector3 bestPoint = transform.position;
@@ -123,7 +147,11 @@ public class AgentController : MonoBehaviour
 
         return bestPoint;
     }
-
+    /// <summary>
+    /// Checks the position the agent is set to go and sees how close that position is to a agent
+    /// </summary>
+    /// <param name="position"></param>
+    /// <returns></returns>
     private float GetDistanceToClosestAgent(Vector3 position)
     {
         Collider[] nearbyAgents = Physics.OverlapSphere(position, samplingRadius, LayerMask.GetMask(agentLayer));
@@ -140,7 +168,10 @@ public class AgentController : MonoBehaviour
 
         return closest;
     }
-
+    /// <summary>
+    /// gets a random point in the area the agent is set to go
+    /// </summary>
+    /// <returns></returns>
     private Vector3 GetRandomPointInArea()
     {
         Bounds bounds = areaToGo.bounds;
@@ -150,13 +181,17 @@ public class AgentController : MonoBehaviour
             Random.Range(bounds.min.z, bounds.max.z)
         );
     }
-
+    /// <summary>
+    /// checks for collisions inside the area he intends to try to evade pushing around the area so in case he is pushing to much 
+    /// he just stops and stays in that spot of the area since that area is already where he wanted to go.
+    /// </summary>
+    /// <param name="other"></param>
     private void OnTriggerEnter(Collider other)
     {
-        if (other.gameObject != gameObject && other.gameObject.layer == LayerMask.NameToLayer("Agent")&& IsInsideRealDesiredArea())
+        if (other.gameObject != gameObject && other.gameObject.layer == LayerMask.NameToLayer("Agent")&&IsInsideRealDesiredArea())
         {
             pushes += 1;
-            if (other.gameObject != gameObject && other.gameObject.layer == LayerMask.NameToLayer("Agent") && pushes >= 3)
+            if (other.gameObject != gameObject && other.gameObject.layer == LayerMask.NameToLayer("Agent") && pushes >= 10)
             {
                 if (IsInsideRealDesiredArea())
                 {
@@ -167,7 +202,11 @@ public class AgentController : MonoBehaviour
         }
 
     }
-
+    /// <summary>
+    /// Checks if the agent is in the real area he want to go 
+    /// For example in the stage he will always try to go to the front that would be the real area and the area will only be all the stage.
+    /// </summary>
+    /// <returns></returns>
     private bool IsInsideRealDesiredArea()
     {
         Vector3 closest = areaToGo.ClosestPoint(transform.position);
@@ -180,6 +219,10 @@ public class AgentController : MonoBehaviour
 
         return distance < 0.1f; // Tweak threshold if needed
     }
+    /// <summary>
+    /// Checks if the agent is in the area he wants to go 
+    /// </summary>
+    /// <returns></returns>
     private bool IsAroundDesiredArea()
     {
         Vector3 closest = currentArea.WholeArea.ClosestPoint(transform.position);
@@ -192,7 +235,10 @@ public class AgentController : MonoBehaviour
 
         return distance < 0.1f; // Tweak threshold if needed
     }
-
+    /// <summary>
+    /// stops the movement of the agent but if it is his first time stopping by force in that area he will try to find a better spot
+    /// because there are too many pushes where he is 
+    /// </summary>
     void StopMoving()
     {
         agent.isStopped = true;
@@ -203,47 +249,47 @@ public class AgentController : MonoBehaviour
             stopped = true;
         }
     }
-
-    private void FindHungerLevel(){
-        float hungerPercent = (float)hunger / (float)maxHunger * 100f;
-        if (hungerPercent >= 80f)
-            hungerLevel = 1;
-        else if (hungerPercent >= 50f)
-            hungerLevel = 2;
-        else if (hungerPercent >= 30f)
-            hungerLevel = 3;
-        else if (hungerPercent >= 10f)
-            hungerLevel = 4;
+    /// <summary>
+    /// used to find the Level of hunger/tiredness in this case the level represents how much he wants to do that based on how tired/hungry he is,
+    /// 1 being he doesnt want to do it and 5 meaning he needs to do it
+    /// </summary>
+    /// <param name="value"></param>
+    /// <param name="MaxValue"></param>
+    /// <returns></returns>
+    private int FindLevel(int value, int MaxValue){
+        float Percent = (float)value / (float)MaxValue * 100f;
+        if (Percent >= 80f)
+            return 1;
+        else if (Percent >= 50f)
+            return 2;
+        else if (Percent >= 30f)
+            return 3;
+        else if (Percent >= 10f)
+            return 4;
         else
-            hungerLevel = 5;
+            return 5;
     }
-    
-    private void FindTirednessLevel(){
-        float tirednessPercent = (float)tiredness / (float)maxTiredness * 100f;
-
-        if (tirednessPercent >= 80f)
-            tirednessLevel = 1;
-        else if (tirednessPercent >= 50f)
-            tirednessLevel = 2;
-        else if (tirednessPercent >= 30f)
-            tirednessLevel = 3;
-        else if (tirednessPercent >= 10f)
-            tirednessLevel = 4;
-        else
-            tirednessLevel = 5;
-    }
+    /// <summary>
+    /// gets the weigh of each level of hunger/tiredness to facilitate and have better calculations on what to do next
+    /// </summary>
+    /// <param name="level"></param>
+    /// <returns></returns>
     private int GetLevelWeight(int level)
     {
         switch (level)
         {
-            case 5: return 5;
             case 4: return 9; 
-            case 3: return 4;
+            case 3: return 5;
             case 2: return 2;
             case 1: return 0;
             default: return 0;
         }
     }
+    /// <summary>
+    /// Based on the hunger level and tiredness level it decides on what to do, but still being random, but this helps to find out what he would want to do the most 
+    /// based on his hunger and tiredness levels.
+    /// </summary>
+    /// <returns></returns>()
     private Rooms.whatCanDo FindWhatToDo(){
         if (hungerLevel == 5 && tirednessLevel != 5)
             return Rooms.whatCanDo.Eat;
@@ -256,7 +302,7 @@ public class AgentController : MonoBehaviour
 
         int eatWeight = GetLevelWeight(hungerLevel);
         int restWeight = GetLevelWeight(tirednessLevel);
-        int funWeight = Mathf.Max(10 - (eatWeight + restWeight), 0);
+        int funWeight = Mathf.Max(15 - (eatWeight + restWeight), 0);
 
         int total = eatWeight + restWeight + funWeight;
         int roll = Random.Range(0, total);
@@ -273,30 +319,17 @@ public class AgentController : MonoBehaviour
     /// Randomizes the Hunger and rest but always something greater than 3/4 of the max because everybody comes in with a different amount of hunger and tiredness.
     /// </summary>
     private void RandomizeHungerAndTiredness(){
-        hunger -= Random.Range(0,(maxHunger/4));
-        tiredness -= Random.Range(0,(tiredness/4));
+        hunger -= Random.Range(0,(maxHungerToRemoveAtStart));
+        tiredness -= Random.Range(0,(maxTirednessToRemoveAtStart));
     }
-    private void GetAllAreas(){
-        foreach(Transform child in parentAreas.transform){
-            if (child.GetComponent<Rooms>() != null)
-            {
-                allAreas.Add(child.GetComponent<Rooms>());
-            }
-        }
-    }
-    private void DoAgentState(){
-        List<Rooms> matchingRooms = new List<Rooms> ();
-        foreach (Rooms room in allAreas){
-            if(room.WhatToDo == AgentState){
-                matchingRooms.Add(room);
-            }
-        }
-        int roomnumber = Random.Range(0, matchingRooms.Count);
-        Debug.Log(roomnumber);
-        currentArea = matchingRooms[roomnumber];
-        GetAreaInfo();
-    }
+    /// <summary>
+    /// First this gets the Area he should go by telling the Parent of all areas im on this state give me a room to go and he gives u a room for your state
+    /// then this stores it so we have full access to the current room and we verify if that room has more than one place to go if no it just goes to a 
+    /// sets the area to go to the only area the room has else it would check every area and see what is full in case none are full it will send u to the first place
+    /// if the first place is full it will send u to the second place and so on and if all of them are full it just sends u to the last one.
+    /// </summary>
     private void GetAreaInfo(){
+        currentArea = parentAreas.CheckRoomsWithMatchingStateAndGiveRoom(AgentState);
         timeToSpendInArea = Random.Range(currentArea.MinTimeToSpendHere, 1+currentArea.MaxTimeToSpendHere);
         int amountofplaces = 0;
         bool areaDecided = false;
@@ -315,17 +348,6 @@ public class AgentController : MonoBehaviour
         }
         if(!areaDecided){
             areaToGo = currentArea.PlacesHeCanGo[amountofplaces];
-        }
-        Vector3 bestSpot = FindMostIsolatedSpot();
-        agent.SetDestination(bestSpot);
-        CheckArea();
-    }
-    private void CheckArea(){
-        if(currentArea.WhatToDo == Rooms.whatCanDo.Eat){
-            hunger = 100;
-        }
-        if(currentArea.WhatToDo == Rooms.whatCanDo.Rest){
-            tiredness = 100;
         }
     }
 }

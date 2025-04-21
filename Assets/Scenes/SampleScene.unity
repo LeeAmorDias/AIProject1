@@ -236,6 +236,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 27126049}
+  - component: {fileID: 27126050}
   m_Layer: 0
   m_Name: Areas
   m_TagString: Untagged
@@ -264,6 +265,18 @@ Transform:
   - {fileID: 1929199130}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &27126050
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 27126048}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a14e6c2d34e579a48944da24a68032c8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &30262748
 GameObject:
   m_ObjectHideFlags: 0
@@ -2632,7 +2645,7 @@ Transform:
   m_GameObject: {fileID: 1214318217}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0, y: 10, z: -44.7}
+  m_LocalPosition: {x: 0, y: 10, z: -43.2}
   m_LocalScale: {x: 85.34, y: 20, z: 0.5}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3228,7 +3241,7 @@ Transform:
   m_GameObject: {fileID: 1373381080}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.6, y: 0, z: -0.6}
+  m_LocalPosition: {x: 8.2, y: 0, z: -0.6}
   m_LocalScale: {x: 105.121284, y: 0.1, z: 90.36177}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3420,7 +3433,7 @@ MonoBehaviour:
   spawnPosition: {fileID: 708052905}
   amountOfAgentsToSpawn: 100
   spawnAllAgentsAtOnce: 1
-  timeToSpawnAgent: 1
+  timeToSpawnAgent: 3
 --- !u!1 &1481419410
 GameObject:
   m_ObjectHideFlags: 0
@@ -4009,7 +4022,7 @@ Transform:
   m_GameObject: {fileID: 1750658854}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 5.1, y: 0, z: 0}
   m_LocalScale: {x: 60.035004, y: 0.1, z: 50}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5112,7 +5125,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   placeName: Stage 1
-  whatToDo: 2
+  whatToDo: 0
   canGoToMoreThanOnePlace: 0
   whereToGo: {fileID: 1105023170}
   placesHeCanGo:

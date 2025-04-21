@@ -179,8 +179,10 @@ MonoBehaviour:
   agent: {fileID: 8528877283567150416}
   maxHunger: 100
   maxTiredness: 100
-  timePerUpdate: 5
-  MinAmountOfHungerToTakePerUpdate: 5
-  MaxAmountOfHungerToTakePerUpdate: 10
-  MinAmountOfTirednessToTakePerUpdate: 5
-  MaxAmountOfTirednessToTakePerUpdate: 10
+  timePerUpdate: 2
+  minAmountOfHungerToTakePerUpdate: 3
+  maxAmountOfHungerToTakePerUpdate: 10
+  minAmountOfTirednessToTakePerUpdate: 3
+  maxAmountOfTirednessToTakePerUpdate: 10
+  maxHungerToRemoveAtStart: 15
+  maxTirednessToRemoveAtStart: 15
