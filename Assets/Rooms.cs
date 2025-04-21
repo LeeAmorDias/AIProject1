@@ -16,27 +16,28 @@ public class Rooms : MonoBehaviour
     private BoxCollider whereToGo;
     [SerializeField, ShowIf(nameof(canGoToMoreThanOnePlace))]
     private List<BoxCollider> placesHeCanGo;
-    [SerializeField, ShowIf(nameof(ShouldShowField))]
-    private int maxPeople;
     [SerializeField, ShowIf(nameof(canGoToMoreThanOnePlace))]
     private List<int> maxPeoplePerPlace;
     [SerializeField]
-    private int minTimeToSpendHere;
+    private int minTimeToSpendHere = 30;
     [SerializeField]
-    private int maxTimeToSpendHere;
+    private int maxTimeToSpendHere = 60;
+    [SerializeField]
+    private BoxCollider wholeArea;
 
     private int currentAmountOfPeople;
 
     private bool ShouldShowField() => !canGoToMoreThanOnePlace;
-
+    public bool CanGoToMoreThanOnePlace => canGoToMoreThanOnePlace;
+    public whatCanDo WhatToDo => whatToDo;
     public string PlaceName => PlaceName;
     public BoxCollider WhereToGo => whereToGo;
     public List<BoxCollider> PlacesHeCanGo => placesHeCanGo;
-    public int MaxPeople => maxPeople;
     public List<int> MaxPeoplePerPlace => maxPeoplePerPlace;
     public int CurrentAmountOfPeople => currentAmountOfPeople;
     public int MaxTimeToSpendHere => maxTimeToSpendHere;
     public int MinTimeToSpendHere => minTimeToSpendHere;
+    public BoxCollider WholeArea => wholeArea;
     
 
 

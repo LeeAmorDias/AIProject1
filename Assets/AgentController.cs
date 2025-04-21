@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using Unity.VisualScripting;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -15,6 +18,16 @@ public class AgentController : MonoBehaviour
     private int maxHunger = 100;
     [SerializeField]
     private int maxTiredness = 100;
+    [SerializeField]
+    private float timePerUpdate;
+    [SerializeField]
+    private int MinAmountOfHungerToTakePerUpdate;
+    [SerializeField]
+    private int MaxAmountOfHungerToTakePerUpdate;
+    [SerializeField]
+    private int MinAmountOfTirednessToTakePerUpdate;
+    [SerializeField]
+    private int MaxAmountOfTirednessToTakePerUpdate;
 
     private BoxCollider areaToGo;
     private Rooms currentArea;
@@ -25,19 +38,66 @@ public class AgentController : MonoBehaviour
     private string agentLayer = "Agent";
     private int pushes = 0; 
     private bool stopped = false;   
+    private bool inArea;
+    private float timeToSpendInArea;
 
-    private ActionType AgentState;
+    private Rooms.whatCanDo AgentState;
+
+    private GameObject parentAreas;
+    private List<Rooms> allAreas = new List<Rooms>();
+    private float timePassed;
     
 
 
-    void Start()
+    private void Awake()
     {
+        parentAreas = GameObject.Find("Areas");
+        GetAllAreas();
         hunger = maxHunger;
         tiredness = maxTiredness;
         RandomizeHungerAndTiredness();
         FindHungerLevel();
         FindTirednessLevel();
         AgentState = FindWhatToDo();
+        DoAgentState();
+        Vector3 bestSpot = FindMostIsolatedSpot();
+        agent.SetDestination(bestSpot);
+    }
+
+    private void Update()
+    {
+        UpdateAgent();
+        if(IsAroundDesiredArea() && timeToSpendInArea >= 0){
+            CountTimeToSpendInArea();
+            
+        }else if(timeToSpendInArea <= 0){
+            FindHungerLevel();
+            FindTirednessLevel();
+            AgentState = FindWhatToDo();
+            DoAgentState();
+            Vector3 bestSpot = FindMostIsolatedSpot();
+            agent.SetDestination(bestSpot);
+        }
+
+    }
+    private void UpdateAgent(){
+        timePassed += Time.deltaTime;
+        if(timePassed > timePerUpdate){
+            timePassed = 0;
+            if(currentArea.WhatToDo != Rooms.whatCanDo.Eat)
+                hunger -= Random.Range(MinAmountOfHungerToTakePerUpdate, MaxAmountOfHungerToTakePerUpdate);
+            if(currentArea.WhatToDo != Rooms.whatCanDo.Rest)
+                tiredness -= Random.Range(MinAmountOfTirednessToTakePerUpdate, MaxAmountOfTirednessToTakePerUpdate);
+        }
+        if(hunger <= 0){
+            hunger = 0;
+        }
+        if (tiredness <= 0){
+            tiredness = 0;
+        }
+    }
+    private void CountTimeToSpendInArea(){
+        timeToSpendInArea -= Time.deltaTime;
     }
 
     private Vector3 FindMostIsolatedSpot()
@@ -47,6 +107,7 @@ public class AgentController : MonoBehaviour
 
         for (int i = 0; i < sampleCount; i++)
         {
+
             Vector3 sample = GetRandomPointInArea();
 
             if (NavMesh.SamplePosition(sample, out NavMeshHit hit, 2f, NavMesh.AllAreas))
@@ -56,7 +117,7 @@ public class AgentController : MonoBehaviour
                 {
                     bestScore = minDistance;
                     bestPoint = hit.position;
-                }
+                }            
             }
         }
 
@@ -90,14 +151,14 @@ public class AgentController : MonoBehaviour
         );
     }
 
-    void OnTriggerEnter(Collider other)
+    private void OnTriggerEnter(Collider other)
     {
-        if (other.gameObject != gameObject && other.gameObject.layer == LayerMask.NameToLayer("Agent")&& IsInsideDesiredArea())
+        if (other.gameObject != gameObject && other.gameObject.layer == LayerMask.NameToLayer("Agent")&& IsInsideRealDesiredArea())
         {
             pushes += 1;
-            if (other.gameObject != gameObject && other.gameObject.layer == LayerMask.NameToLayer("Agent") && pushes >= 10)
+            if (other.gameObject != gameObject && other.gameObject.layer == LayerMask.NameToLayer("Agent") && pushes >= 3)
             {
-                if (IsInsideDesiredArea())
+                if (IsInsideRealDesiredArea())
                 {
                     StopMoving();
                     pushes = 0;
@@ -107,9 +168,21 @@ public class AgentController : MonoBehaviour
 
     }
 
-    bool IsInsideDesiredArea()
+    private bool IsInsideRealDesiredArea()
     {
         Vector3 closest = areaToGo.ClosestPoint(transform.position);
+
+        // Ignore Y axis and just check horizontal distance
+        Vector2 agentPos2D = new Vector2(transform.position.x, transform.position.z);
+        Vector2 closest2D = new Vector2(closest.x, closest.z);
+
+        float distance = Vector2.Distance(agentPos2D, closest2D);
+
+        return distance < 0.1f; // Tweak threshold if needed
+    }
+    private bool IsAroundDesiredArea()
+    {
+        Vector3 closest = currentArea.WholeArea.ClosestPoint(transform.position);
 
         // Ignore Y axis and just check horizontal distance
         Vector2 agentPos2D = new Vector2(transform.position.x, transform.position.z);
@@ -129,11 +202,10 @@ public class AgentController : MonoBehaviour
             agent.SetDestination(bestSpot);
             stopped = true;
         }
-        Debug.Log("Agent stopped: already in target area.");
     }
 
     private void FindHungerLevel(){
-        float hungerPercent = (hunger / maxHunger) * 100f;
+        float hungerPercent = (float)hunger / (float)maxHunger * 100f;
         if (hungerPercent >= 80f)
             hungerLevel = 1;
         else if (hungerPercent >= 50f)
@@ -147,7 +219,7 @@ public class AgentController : MonoBehaviour
     }
     
     private void FindTirednessLevel(){
-        float tirednessPercent = (tiredness / maxTiredness) * 100f;
+        float tirednessPercent = (float)tiredness / (float)maxTiredness * 100f;
 
         if (tirednessPercent >= 80f)
             tirednessLevel = 1;
@@ -162,9 +234,9 @@ public class AgentController : MonoBehaviour
     }
     private int GetLevelWeight(int level)
     {
-        if (level == 5) return 5; // special case, return 5 for 100% action
         switch (level)
         {
+            case 5: return 5;
             case 4: return 9; 
             case 3: return 4;
             case 2: return 2;
@@ -172,15 +244,15 @@ public class AgentController : MonoBehaviour
             default: return 0;
         }
     }
-    private ActionType FindWhatToDo(){
+    private Rooms.whatCanDo FindWhatToDo(){
         if (hungerLevel == 5 && tirednessLevel != 5)
-            return ActionType.Eating;
+            return Rooms.whatCanDo.Eat;
 
         if (tirednessLevel == 5 && hungerLevel != 5)
-            return ActionType.Resting;
+            return Rooms.whatCanDo.Rest;
 
         if (hungerLevel == 5 && tirednessLevel == 5)
-            return Random.value < 0.5f ? ActionType.Eating : ActionType.Resting;
+            return Random.value < 0.5f ? Rooms.whatCanDo.Eat : Rooms.whatCanDo.Rest;
 
         int eatWeight = GetLevelWeight(hungerLevel);
         int restWeight = GetLevelWeight(tirednessLevel);
@@ -190,11 +262,11 @@ public class AgentController : MonoBehaviour
         int roll = Random.Range(0, total);
 
         if (roll < eatWeight)
-            return ActionType.Eating;
+            return Rooms.whatCanDo.Eat;
         else if (roll < eatWeight + restWeight)
-            return ActionType.Resting;
+            return Rooms.whatCanDo.Rest;
         else
-            return ActionType.Partying;
+            return Rooms.whatCanDo.Fun;
         
     } 
     /// <summary>
@@ -203,5 +275,56 @@ public class AgentController : MonoBehaviour
     private void RandomizeHungerAndTiredness(){
         hunger -= Random.Range(0,(maxHunger/4));
         tiredness -= Random.Range(0,(tiredness/4));
+    }
+    private void GetAllAreas(){
+        foreach(Transform child in parentAreas.transform){
+            if (child.GetComponent<Rooms>() != null)
+            {
+                allAreas.Add(child.GetComponent<Rooms>());
+            }
+        }
+    }
+    private void DoAgentState(){
+        List<Rooms> matchingRooms = new List<Rooms> ();
+        foreach (Rooms room in allAreas){
+            if(room.WhatToDo == AgentState){
+                matchingRooms.Add(room);
+            }
+        }
+        int roomnumber = Random.Range(0, matchingRooms.Count);
+        currentArea = matchingRooms[roomnumber];
+        GetAreaInfo();
+    }
+    private void GetAreaInfo(){
+        timeToSpendInArea = Random.Range(currentArea.MinTimeToSpendHere, 1+currentArea.MaxTimeToSpendHere);
+        int amountofplaces = 0;
+        bool areaDecided = false;
+        if(currentArea.CanGoToMoreThanOnePlace){
+            for(int i = 0; i < currentArea.PlacesHeCanGo.Count ; i++ )
+            {
+                amountofplaces += 1;
+                if(currentArea.MaxPeoplePerPlace[i] > currentArea.CurrentAmountOfPeople && !areaDecided){
+                    areaToGo = currentArea.PlacesHeCanGo[i];
+                    areaDecided = true;
+                }
+            }
+        }else{
+            areaToGo = currentArea.WhereToGo;
+            areaDecided = true;
+        }
+        if(!areaDecided){
+            areaToGo = currentArea.PlacesHeCanGo[amountofplaces];
+        }
+        Vector3 bestSpot = FindMostIsolatedSpot();
+        agent.SetDestination(bestSpot);
+        CheckArea();
+    }
+    private void CheckArea(){
+        if(currentArea.WhatToDo == Rooms.whatCanDo.Eat){
+            hunger = 100;
+        }
+        if(currentArea.WhatToDo == Rooms.whatCanDo.Rest){
+            tiredness = 100;
+        }
     }
 }
