@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.AI;
 using Assets.Scripts;
 using LibGameAI.DecisionTrees;
+using Unity.AI.Navigation;
 
 public class AgentController : MonoBehaviour
 {
@@ -52,6 +53,7 @@ public class AgentController : MonoBehaviour
 
     private AreasController parentAreas;
     private float timePassed;
+    private NavMeshSurface navMeshSurface; // Reference to NavMeshSurface
     
 
     /// <summary>
@@ -60,10 +62,12 @@ public class AgentController : MonoBehaviour
     /// </summary>
     private void Awake()
     {
+        navMeshSurface = FindFirstObjectByType<NavMeshSurface>();
         parentAreas = GameObject.FindFirstObjectByType<AreasController>();
         hunger = maxHunger;
         tiredness = maxTiredness;
         RandomizeHungerAndTiredness();
+        
         /*
         hungerLevel = FindLevel(hunger, maxHunger);
         tirednessLevel = FindLevel(tiredness, maxTiredness);
@@ -86,10 +90,9 @@ public class AgentController : MonoBehaviour
     /// </summary>
     private void Update()
     {
-        UpdateAgent();
-
         ActionNode actionNode = root.MakeDecision() as ActionNode;
         actionNode.Execute();
+        UpdateAgent();
         /*
         if(IsAroundDesiredArea() && timeToSpendInArea >= 0){
             WaitAction();
@@ -101,6 +104,7 @@ public class AgentController : MonoBehaviour
 
     }
     private void NormalAction(){
+        SetEmergencyFloorWalkability(false);
         pushes = 0;
         hungerLevel = FindLevel(hunger, maxHunger);
         tirednessLevel = FindLevel(tiredness, maxTiredness);
@@ -143,7 +147,7 @@ public class AgentController : MonoBehaviour
     /// counts down the time he intends to spend per area.
     /// </summary>
     private bool IsStillWaitingInArea(){
-        return timeToSpendInArea >= 0;
+        return timeToSpendInArea > 0;
     }
     private bool IsPanicking()
     {
@@ -382,5 +386,23 @@ public class AgentController : MonoBehaviour
         if(!areaDecided){
             areaToGo = currentArea.PlacesHeCanGo[amountofplaces];
         }
+    }
+
+    private void SetEmergencyFloorWalkability(bool isWalkable)
+    {
+        if (isWalkable)
+        {
+            // Allow walking through everything
+            agent.areaMask = NavMesh.AllAreas;
+        }
+        else
+        {
+            // Avoid Not Walkable (area index 1)
+            int walkableMask = 1 << NavMesh.GetAreaFromName("Walkable");
+            agent.areaMask = walkableMask;
+        }
+
+
+        navMeshSurface.BuildNavMesh();
     }
 }
