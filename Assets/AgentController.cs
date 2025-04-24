@@ -3,6 +3,7 @@ using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.AI;
+using Assets.Scripts.FSM;
 
 public class AgentController : MonoBehaviour
 {
@@ -67,6 +68,12 @@ public class AgentController : MonoBehaviour
         GetAreaInfo();
         Vector3 bestSpot = FindMostIsolatedSpot();
         agent.SetDestination(bestSpot);
+    }
+
+    // Create the FSM
+    private void Start()
+    {
+        //Create States
     }
 
     /// <summary>

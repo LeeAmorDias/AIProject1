@@ -4,7 +4,7 @@ using System.Collections.Generic;
 public class Rooms : MonoBehaviour
 {
     // Enum to define the type of room
-    public enum whatCanDo { Eat, Rest, Fun }
+    public enum whatCanDo { Eat, Rest, Fun, Escape }
     // Name of the unit 
     [SerializeField] 
     private string placeName; 
