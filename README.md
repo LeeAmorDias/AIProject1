@@ -4,71 +4,92 @@ Lee Dias a22405765
 
 João Fernandes a22304583
 
-## O QUE FOI FEITO POR CADA MEMBRO
+## WHAT WAS DONE BY EACH MEMBER
 
-Lee Dias: Fez a criação do mapa, o script do agents handler, o script que gere cada area,
-a base do script dos agents (no caso tudo feito mas sem a parte do panico) 
-que foi feito com a ajuda do navmesh do unity, e 50% do README.
+Lee Dias: Created the map, the agents handler script, the script that manages each area,
+and the base of the agents script (everything done except the panic behavior),
+which was implemented using Unity's NavMesh , completed 50% of the README.
 
 João Fernandes:
 
-## INTRODUÇÃO
-Neste trabalho foi nos proposto a criação de um AI para Pessoas em um festival,
-em que passado um tempo desse festival estar a decorrer acontece uma explosão
-que mata todas as pessoas nessa area e causa panico a toda as pessoas a volta
-que causa com que as pessoas fugam e o panico despois espalha para as pessoas
-que não viram a explosão.
+## INTRODUCTION
+In this project, we were tasked with creating an AI for people at a festival.
+After the festival has been running for some time, an explosion occurs that kills
+all the people in that area and causes panic among those nearby.
+This panic then spreads to people who did not witness the explosion directly.
 
-## METODOLOGIA
-A simulação foi feita em 3D, as pessoas utilizam um movimento cinematico, 
-o script das pessoas funciona da seguinte forma primeiro verifica o nivel de fome e cansaço.
-| Nivel   | Cansaço |
+## METHODOLOGY
+The simulation was done in 3D. The people use kinematic movement.
+The people's script works as follows: 
+
+So it was made with a decision tree, and the first question is:
+
+<p>Is the person in panic?
+
+If yes, they will enter the [Panic State](#panic-state)
+<br>If no, it will check whether the time they wanted to spend in the current area has passed.
+
+If no, they will be in [Waiting State](#waiting-state).
+<br>If yes, they will [Go To Next Area State](#go-to-next-are-state). 
+</p>
+
+### Panic State
+
+### Waiting State
+
+Waits until he has passed his desired time in the area he is at.
+ 
+### Go To Next Area State
+| Level   | Hunger/Tiredness |
 | -------- | ------- |
-| 1 | 80% ou mais do maximo  |
-| 2 | 50% ou mais do maximo  |
-| 3 | 30% ou mais do maximo  | 
-| 4 | 10% ou mais do maximo  |
-| 5 | 0% ou mais do maximo   |
+| 1 | 80% or more (from total)  |
+| 2 | 50% or more (from total)  |
+| 3 | 30% or more (from total)  | 
+| 4 | 10% or more (from total)  |
+| 5 | 0% or more (from total)   |
 
-Depois de ver o nivel de fome e cansaço o player ve a quantidade de vontade que 
-ele vai ter de fazer essa ação considerado o nivel.
- No nivel 5 é feito um sistema que faz imediatamente essa função e caso ambas a fome
-e o nivel de cansaço esteja no 5 faz um 50/50.
-Mas nos restos dos casos funciona da seguinte forma 
+After checking the hunger and tiredness levels, the player evaluates how much desire they
+have to perform the action based on those levels.
+At level 5, a system triggers the action immediately.
+If both hunger and tiredness are at level 5, it performs a 50/50 decision.
+In all other cases, it works as follows:
 
-| Nivel   | Vontade |
+| Level   | Weigh |
 | -------- | ------- |
 | 1 | 0  |
 | 2 | 2  |
 | 3 | 5  |
 | 4 | 9  | 
 
-O sistema funciona da seguinte forma para o calculo de a vontade de ele ir se divertir,
-a conta é feita com um 15 sendo o maximo do DivertirV porque depois de muitos testes
-sobre valores, achamos que esses valor representaria melhor o que seria a vontade de uma pessoa
-de se ir divertir consoante os seus niveis de fome e cansaço.
+The system works as follows for calculating the desire to go have fun:
+The calculation uses 15 as the maximum funWeight, because after extensive testing with different values,
+we found that this number best represents a person's willingness to have fun,
+depending on their hunger and tiredness levels.
 
-<p>DivertirV = Vontade de divertir
-<br>FomeV = Vontade de ir comer
-<br>CansaçoV = Vontade de descansar
+
+
+<p>funWeight = How much he wants to go have fun
+<br>eatWeight = How much he wants to go eat
+<br>restWeight = How much he wants to rest
 </p>
 
-DivertirV = 15 - (FomeV + CansaçoV)
+funWeight = 15 - (eatWeight + restWeight)
 
-Total = DivertirV + FomeV + CansaçoV
+Total = funWeight + eatWeight + restWeight
 
-E depois as chances ficam algo como DivertirV/Total , FomeV/Total , CansaçoV/Total
-<p> Um exemplo seria nivel 3 de fome nivel 4 de cansaço as chances seriam,
-5/15(Fome) , 9/15(Cansaço) , 1/15(Divertir)
+The chances will be something like funWeight/Total , eatWeight/Total , restWeight/Total
+<p> A example to this is level 3 hunger level 4 Tiredness the chances would be, 
+5/15(Hunger) , 9/15(Tiredness) , 1/15(Fun)
 
-Em seguida depois de descobrir o que quer fazer a pessoa vai para o sitio e depois determina a quantidade
-de tempo que quer ficar no sitio onde esta e passado esse tempo repete o ciclo todo para decidir o que ira 
-fazer a seguir.
-
+Next, after deciding what they want to do, the person goes to the location and 
+then determines how long they want to stay there.
 
 
-## RESULTADOS E DISCUSSÃO
+![image](files://C:/Users/leeam/AI Project 1/DecisionTree.png)
 
-## CONCLUSÕES
 
-## REFERÊNCIAS 
+## RESULTS AND DISCUSSION
+
+## CONCLUSIONS
+
+## REFERENCES
