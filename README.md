@@ -85,7 +85,7 @@ Next, after deciding what they want to do, the person goes to the location and
 then determines how long they want to stay there.
 
 
-![image](./DecisionTree.png)
+![image](files://C:/Users/leeam/AI Project 1/DecisionTree.png)
 
 
 ## RESULTS AND DISCUSSION
@@ -93,3 +93,7 @@ then determines how long they want to stay there.
 ## CONCLUSIONS
 
 ## REFERENCES
+https://www.youtube.com/watch?v=CHV1ymlw-P8
+<br>https://www.youtube.com/watch?v=FkLJ45Pt-mY
+<br>https://www.youtube.com/watch?v=u2EQtrdgfNs
+<br>https://www.youtube.com/watch?v=igrHPCTFZXM
