@@ -85,7 +85,7 @@ Next, after deciding what they want to do, the person goes to the location and
 then determines how long they want to stay there.
 
 
-![image](files://C:/Users/leeam/AI Project 1/DecisionTree.png)
+![image](./DecisionTree.png)
 
 
 ## RESULTS AND DISCUSSION
