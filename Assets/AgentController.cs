@@ -3,11 +3,11 @@ using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.AI;
-using Assets.Scripts.FSM;
+using Assets.Scripts;
+using LibGameAI.DecisionTrees;
 
 public class AgentController : MonoBehaviour
 {
-    private enum ActionType { Eating, Resting, Partying }
 
     [SerializeField]
     private float samplingRadius = 10f;
@@ -45,6 +45,8 @@ public class AgentController : MonoBehaviour
     private bool stopped = false;   
     private bool inArea;
     private float timeToSpendInArea;
+    // The root of the decision tree
+    private IDecisionTreeNode root;
 
     private Rooms.whatCanDo AgentState;
 
@@ -62,18 +64,19 @@ public class AgentController : MonoBehaviour
         hunger = maxHunger;
         tiredness = maxTiredness;
         RandomizeHungerAndTiredness();
+        /*
         hungerLevel = FindLevel(hunger, maxHunger);
         tirednessLevel = FindLevel(tiredness, maxTiredness);
         AgentState = FindWhatToDo();
         GetAreaInfo();
         Vector3 bestSpot = FindMostIsolatedSpot();
         agent.SetDestination(bestSpot);
-    }
+        */
+        IDecisionTreeNode panicAction = new ActionNode(PanicAction);
+        IDecisionTreeNode waitAction = new ActionNode(WaitAction);
+        IDecisionTreeNode normalAction = new ActionNode(NormalAction);
 
-    // Create the FSM
-    private void Start()
-    {
-        //Create States
+        root = new DecisionNode(IsPanicking, panicAction, new DecisionNode(IsStillWaitingInArea, waitAction, normalAction));
     }
 
     /// <summary>
@@ -84,19 +87,34 @@ public class AgentController : MonoBehaviour
     private void Update()
     {
         UpdateAgent();
+
+        ActionNode actionNode = root.MakeDecision() as ActionNode;
+        actionNode.Execute();
+        /*
         if(IsAroundDesiredArea() && timeToSpendInArea >= 0){
-            CountTimeToSpendInArea();
+            WaitAction();
             
         }else if(timeToSpendInArea <= 0){
-            pushes = 0;
-            hungerLevel = FindLevel(hunger, maxHunger);
-            tirednessLevel = FindLevel(tiredness, maxTiredness);
-            AgentState = FindWhatToDo();
-            GetAreaInfo();
-            Vector3 bestSpot = FindMostIsolatedSpot();
-            agent.SetDestination(bestSpot);
+            NormalAction();
         }
+        */
 
+    }
+    private void NormalAction(){
+        pushes = 0;
+        hungerLevel = FindLevel(hunger, maxHunger);
+        tirednessLevel = FindLevel(tiredness, maxTiredness);
+        AgentState = FindWhatToDo();
+        GetAreaInfo();
+        Vector3 bestSpot = FindMostIsolatedSpot();
+        agent.SetDestination(bestSpot);
+    }
+    private void PanicAction(){
+
+    }
+    private void WaitAction(){
+        if (IsAroundDesiredArea())
+            timeToSpendInArea -= Time.deltaTime;
     }
     /// <summary>
     /// checks if enough time has passed to take out hunger and tiredness from the agent but of course if the agent is resting he will not be taken out any tiredness.
@@ -124,8 +142,12 @@ public class AgentController : MonoBehaviour
     /// <summary>
     /// counts down the time he intends to spend per area.
     /// </summary>
-    private void CountTimeToSpendInArea(){
-        timeToSpendInArea -= Time.deltaTime;
+    private bool IsStillWaitingInArea(){
+        return timeToSpendInArea >= 0;
+    }
+    private bool IsPanicking()
+    {
+        return AgentState == Rooms.whatCanDo.Escape;
     }
     /// <summary>
     /// tries to find the most isolated spot around the area it was sent. 
@@ -216,6 +238,8 @@ public class AgentController : MonoBehaviour
     /// <returns></returns>
     private bool IsInsideRealDesiredArea()
     {
+        if (areaToGo == null)
+            return false;
         Vector3 closest = areaToGo.ClosestPoint(transform.position);
 
         // Ignore Y axis and just check horizontal distance
@@ -232,6 +256,8 @@ public class AgentController : MonoBehaviour
     /// <returns></returns>
     private bool IsAroundDesiredArea()
     {
+        if (currentArea == null)
+            return false;
         Vector3 closest = currentArea.WholeArea.ClosestPoint(transform.position);
 
         // Ignore Y axis and just check horizontal distance
