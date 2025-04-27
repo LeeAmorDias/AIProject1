@@ -23,6 +23,10 @@ public class AgentsHandler : MonoBehaviour
         timePassed = timeToSpawnAgent;
     }
     // Update is called once per frame
+    /// <summary>
+    /// this updates will starts by checking the amount of agents that have spawned to see if it should spawn more
+    /// then it checks if it should spawnallagents at once or per time and then if it is by time it will spawn 1 once every "timeToSpawnAgent" has passed
+    /// </summary>
     void Update()
     {
         if(agentsSpawned < amountOfAgentsToSpawn){
@@ -38,5 +42,14 @@ public class AgentsHandler : MonoBehaviour
                 }
             }
         } 
+    }
+    /// <summary>
+    /// adds 1 to the death counter
+    /// </summary>
+    public void AddDeathToCounter(){
+        deathCounter += 1;
+    }
+    public int GetDeathCounter(){
+        return deathCounter;
     }
 }
