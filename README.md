@@ -134,10 +134,17 @@ in green areas, the spot they pick doesn't get updated if someone else reaches i
 But we like to think that this is simply people trying to make friends, it is a concert
 after all.
 
-Finally because our NavMesh has a lot of sharp corners it is common for agents to
+Because our NavMesh has a lot of sharp corners it is common for agents to
 get a little stuck in these especially if there's a lot of agents taking the same
 path like is the case in evacuation scenarios, thankfully with our settings it never
 lead to a death because the propagate so much slower than the agents move.
+
+The method we used to have our agents avoid the fires/explosions isn't really working
+how we wanted, we decided to use NavMeshObstacles to carve out the mesh around the
+hazardous areas so that path calculation could work around them but this makes it so
+agents are actually physically pushed away from these areas, which isn't realistic at
+all and makes the agents behave strangely when cornered by spreading fires. We ended
+up not having time to fix this.
 
 ## CONCLUSIONS
 
