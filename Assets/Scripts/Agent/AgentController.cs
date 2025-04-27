@@ -267,6 +267,7 @@ public class AgentController : MonoBehaviour
 
     /// <summary>
     /// tries to find the most isolated spot around the area it was sent. 
+    /// This code had some AI help to be developed but the ideia was 100% ours.
     /// </summary>
     /// <returns></returns>
     private Vector3 FindMostIsolatedSpot()
@@ -293,7 +294,8 @@ public class AgentController : MonoBehaviour
         return bestPoint;
     }
     /// <summary>
-    /// Checks the position the agent is set to go and sees how close that position is to a agent
+    /// Checks the position the agent is set to go and sees how close that position is to a agent 
+    /// This code had AI help to be developed but the ideia was 100% ours.
     /// </summary>
     /// <param name="position"></param>
     /// <returns></returns>
@@ -320,11 +322,7 @@ public class AgentController : MonoBehaviour
     private Vector3 GetRandomPointInArea()
     {
         Bounds bounds = areaToGo.bounds;
-        return new Vector3(
-            Random.Range(bounds.min.x, bounds.max.x),
-            bounds.center.y,
-            Random.Range(bounds.min.z, bounds.max.z)
-        );
+        return new Vector3(Random.Range(bounds.min.x, bounds.max.x), bounds.center.y, Random.Range(bounds.min.z, bounds.max.z));
     }
     /// <summary>
     /// checks for collisions inside the area he intends to try to evade pushing around the area so in case he is pushing to much 
