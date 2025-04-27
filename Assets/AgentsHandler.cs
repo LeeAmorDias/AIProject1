@@ -16,6 +16,7 @@ public class AgentsHandler : MonoBehaviour
 
     private float timePassed;
     private int agentsSpawned = 0;
+    private int deathCounter = 0;
 
     private bool ShouldShowField() => !spawnAllAgentsAtOnce;
     void Awake(){
@@ -36,10 +37,6 @@ public class AgentsHandler : MonoBehaviour
                         agentsSpawned += 1;
                 }
             }
-
-        }
-
-
-        
+        } 
     }
 }

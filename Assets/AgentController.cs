@@ -1,9 +1,5 @@
-using System.Collections.Generic;
-using Unity.VisualScripting;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.AI;
-using Assets.Scripts;
 using LibGameAI.DecisionTrees;
 using Unity.AI.Navigation;
 
@@ -39,12 +35,14 @@ public class AgentController : MonoBehaviour
 
     private BoxCollider areaToGo;
     private Rooms currentArea;
-    private Collider[] buffer = new Collider[20]; 
+    private Collider[] buffer = new Collider[20];
+    private Renderer agentRenderer;
+    private MaterialPropertyBlock materialPropertyBlock;
+
     private int hunger;
     private int tiredness;
     private int hungerLevel;
     private int tirednessLevel;
-    private int deathCounter;
     private string agentLayer = "Agent";
     private int pushes = 0; 
     private bool stopped = false;
@@ -71,7 +69,9 @@ public class AgentController : MonoBehaviour
     private void Awake()
     {
         navMeshSurface = FindFirstObjectByType<NavMeshSurface>();
-        parentAreas = GameObject.FindFirstObjectByType<AreasController>();
+        parentAreas = FindFirstObjectByType<AreasController>();
+        agentRenderer = GetComponent<Renderer>();
+        materialPropertyBlock = new MaterialPropertyBlock();
         originalSpeed = agent.speed;
         hunger = maxHunger;
         tiredness = maxTiredness;
@@ -123,9 +123,17 @@ public class AgentController : MonoBehaviour
         agent.SetDestination(bestSpot);
     }
     private void PanicAction(){
-        SetEmergencyFloorWalkability(true);
-        AgentState = Rooms.whatCanDo.Escape;
-        agent.SetDestination(ClosestExit());
+        if(AgentState!=Rooms.whatCanDo.Escape){
+            SetEmergencyFloorWalkability(true);
+            AgentState = Rooms.whatCanDo.Escape;
+            agent.SetDestination(BestExit());
+        }
+        
+        if(agent.pathStatus == NavMeshPathStatus.PathInvalid)
+        {
+            agent.SetDestination(BestExit());
+        }
+        
     }
 
     
@@ -150,16 +158,22 @@ public class AgentController : MonoBehaviour
         if(wasStunned)
             agent.speed = originalSpeed * 0.5f;
         
+        if(!wasStunned && isPanicking)
+            agent.speed = originalSpeed * 2f;
+        
         if(timePassed > timePerUpdate){
             timePassed = 0;
-            if(currentArea.WhatToDo != Rooms.whatCanDo.Eat)
-                hunger -= Random.Range(minAmountOfHungerToTakePerUpdate, maxAmountOfHungerToTakePerUpdate);
-            else 
-                hunger = 100;
-            if(currentArea.WhatToDo != Rooms.whatCanDo.Rest)
-                tiredness -= Random.Range(minAmountOfTirednessToTakePerUpdate, maxAmountOfTirednessToTakePerUpdate);
-            else 
-                tiredness = 100;
+            if(currentArea != null)
+            {
+                if(currentArea.WhatToDo != Rooms.whatCanDo.Eat)
+                    hunger -= Random.Range(minAmountOfHungerToTakePerUpdate, maxAmountOfHungerToTakePerUpdate);
+                else 
+                    hunger = 100;
+                if(currentArea.WhatToDo != Rooms.whatCanDo.Rest)
+                    tiredness -= Random.Range(minAmountOfTirednessToTakePerUpdate, maxAmountOfTirednessToTakePerUpdate);
+                else 
+                    tiredness = 100;
+            } 
         }
         if(hunger <= 0){
             hunger = 0;
@@ -174,19 +188,28 @@ public class AgentController : MonoBehaviour
     private bool IsStillWaitingInArea(){
         return timeToSpendInArea > 0;
     }
+
+    private readonly float checkCooldown = 0.05f;
+    private float nextCheckTime = 0f;
     private bool IsPanicking()
     {
-        if (wasStunned)
+        if (wasStunned && !isPanicking)
+        {
             isPanicking = true;
-        spottedExplosion();
-        wasNearPanickingAgent();
-        
+            SetPanicColor();
+        }
+        if(Time.time >= nextCheckTime)
+        {
+            SpottedExplosion();
+            WasNearPanickingAgent();
+            nextCheckTime = Time.time + checkCooldown;
+        }
         return isPanicking;
     }
 
-    private void wasNearPanickingAgent()
+    private void WasNearPanickingAgent()
     {
-        if(!isPanicking && timePassed > timePerUpdate)
+        if(!isPanicking)
         {
             int count = Physics.OverlapSphereNonAlloc(transform.position, samplingRadius, buffer, LayerMask.GetMask(agentLayer));
             for (int i = 0; i < count; i++)
@@ -195,18 +218,21 @@ public class AgentController : MonoBehaviour
                 if(agent.GetComponent<AgentController>().isPanicking)
                 {
                     isPanicking = true;
+                    SetPanicColor();
                 }
             }
         }
     }
 
-    private void spottedExplosion()
+    private void SpottedExplosion()
     {
-        if(!isPanicking && timePassed > timePerUpdate)
+        if(!isPanicking)
         {
             int count = Physics.OverlapSphereNonAlloc(transform.position, samplingRadius, buffer,LayerMask.GetMask("Explosion"));
-            if(count>0)
+            if(count>0){
                 isPanicking = true;
+                SetPanicColor();
+            }
         }
     }
 
@@ -295,7 +321,6 @@ public class AgentController : MonoBehaviour
         if (other.gameObject != gameObject && other.gameObject.layer == LayerMask.NameToLayer("Explosion"))
         {
             Destroy(gameObject);
-            deathCounter++;
         }
 
         //If inside shockwave, stun
@@ -459,11 +484,15 @@ public class AgentController : MonoBehaviour
         }
     }
 
-    private Vector3 ClosestExit()
+    private Vector3 BestExit()
     {
-        //this is kinda ignoring if there is a fire in the closest path
-        //need to fix that later
-        currentArea = parentAreas.GiveClosestRoomWithMatchingState(AgentState, transform.position);
+        currentArea = parentAreas.GiveFastestValidPathToRoom(AgentState, agent);
+        //if no suitable exits are found only thing to do is stand there
+        //contemplating their own mortality
+        if(currentArea == null)
+        {
+            return transform.position;
+        }
         areaToGo = currentArea.WhereToGo;
         return GetRandomPointInArea();
     }
@@ -482,6 +511,14 @@ public class AgentController : MonoBehaviour
             agent.SetAreaCost(NavMesh.GetAreaFromName("Emergency"), 100f);
         }
     }
+    
+    private void SetPanicColor()
+    {
+        agentRenderer.GetPropertyBlock(materialPropertyBlock);
+        materialPropertyBlock.SetColor("_Color", Color.red);
+        agentRenderer.SetPropertyBlock(materialPropertyBlock);
+    }
+    
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.red;
