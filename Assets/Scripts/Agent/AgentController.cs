@@ -2,7 +2,11 @@ using UnityEngine;
 using UnityEngine.AI;
 using LibGameAI.DecisionTrees;
 using Unity.AI.Navigation;
-
+/// <summary>
+/// controls the whole agent: by parts what it does is checks his hunger levels and tirednesse levels then sees what he wants to do if he will want to go eat rest or have fun
+/// but in case an explosion happens he will enter in the panick state and he will also panick if a close by agent is panicking in case he actually got hit by the explosion he will die
+/// or if he was next to the explosion when it happaned he will be stunned and walk slower.
+/// </summary>
 public class AgentController : MonoBehaviour
 {
 
@@ -39,11 +43,17 @@ public class AgentController : MonoBehaviour
     private Renderer agentRenderer;
     private MaterialPropertyBlock materialPropertyBlock;
 
+    //has the agents hunger stored here
     private int hunger;
+    //has the agents  tiredness stored here
     private int tiredness;
+    //has the agents  hungerLevel stored here
     private int hungerLevel;
+    //has the agents  tirednessLevel stored here
     private int tirednessLevel;
+    //has the agents layer stored here
     private string agentLayer = "Agent";
+    //stores how many times the agent has been pushed
     private int pushes = 0; 
     private bool stopped = false;
     private bool isStunned = false;
@@ -52,14 +62,21 @@ public class AgentController : MonoBehaviour
     private bool inArea;
     private float timeToSpendInArea;
     private float originalSpeed;
+
+    private readonly float checkCooldown = 0.05f;
+    private float nextCheckTime = 0f;
+
     // The root of the decision tree
     private IDecisionTreeNode root;
 
     private Rooms.whatCanDo AgentState;
 
     private AreasController parentAreas;
+    private AgentsHandler agentsHandler;
     private float timePassed;
     private NavMeshSurface navMeshSurface; // Reference to NavMeshSurface
+
+    private bool personAddedToArea;
     
 
     /// <summary>
@@ -70,6 +87,7 @@ public class AgentController : MonoBehaviour
     {
         navMeshSurface = FindFirstObjectByType<NavMeshSurface>();
         parentAreas = FindFirstObjectByType<AreasController>();
+        agentsHandler = FindFirstObjectByType<AgentsHandler>();
         agentRenderer = GetComponent<Renderer>();
         materialPropertyBlock = new MaterialPropertyBlock();
         originalSpeed = agent.speed;
@@ -77,14 +95,7 @@ public class AgentController : MonoBehaviour
         tiredness = maxTiredness;
         RandomizeHungerAndTiredness();
         
-        /*
-        hungerLevel = FindLevel(hunger, maxHunger);
-        tirednessLevel = FindLevel(tiredness, maxTiredness);
-        AgentState = FindWhatToDo();
-        GetAreaInfo();
-        Vector3 bestSpot = FindMostIsolatedSpot();
-        agent.SetDestination(bestSpot);
-        */
+
         IDecisionTreeNode panicAction = new ActionNode(PanicAction);
         IDecisionTreeNode waitAction = new ActionNode(WaitAction);
         IDecisionTreeNode normalAction = new ActionNode(NormalAction);
@@ -102,17 +113,15 @@ public class AgentController : MonoBehaviour
         ActionNode actionNode = root.MakeDecision() as ActionNode;
         actionNode.Execute();
         UpdateAgent();
-        /*
-        if(IsAroundDesiredArea() && timeToSpendInArea >= 0){
-            WaitAction();
-            
-        }else if(timeToSpendInArea <= 0){
-            NormalAction();
-        }
-        */
 
     }
+    /// <summary>
+    /// The agent will do what he desires the most having in to an account his hunger and tiredness levels.
+    /// </summary>
     private void NormalAction(){
+        personAddedToArea = false;
+        if(currentArea != null)
+            currentArea.TakeAmountOfPeople();
         SetEmergencyFloorWalkability(false);
         pushes = 0;
         hungerLevel = FindLevel(hunger, maxHunger);
@@ -122,31 +131,43 @@ public class AgentController : MonoBehaviour
         Vector3 bestSpot = FindMostIsolatedSpot();
         agent.SetDestination(bestSpot);
     }
+    /// <summary>
+    /// the agent will enter his panic state and try to run away from the festival
+    /// </summary>
     private void PanicAction(){
         if(AgentState!=Rooms.whatCanDo.Escape){
             SetEmergencyFloorWalkability(true);
             AgentState = Rooms.whatCanDo.Escape;
             agent.SetDestination(BestExit());
         }
-        
         if(agent.pathStatus == NavMeshPathStatus.PathInvalid)
         {
             agent.SetDestination(BestExit());
         }
+        if(IsInsideRealDesiredArea()){
+            Destroy(gameObject);
+        }
         
     }
 
-    
+    /// <summary>
+    /// if the agent is in the area and if he is it will count down the time else it will wait for him to get there to start counting
+    /// </summary>
     private void WaitAction(){
-        if (IsAroundDesiredArea())
+        if (IsAroundDesiredArea()){
             timeToSpendInArea -= Time.deltaTime;
+            if(!personAddedToArea){
+                currentArea.AddAmountOfPeople();
+                personAddedToArea = true;
+            }
+        }
     }
     /// <summary>
     /// checks if enough time has passed to take out hunger and tiredness from the agent but of course if the agent is resting he will not be taken out any tiredness.
+    /// also checks if it is stunned and if he is it will make him stop for the time in "stunTimer" and checks if he was stunned or wasnt and if is panicking to set his new speed
     /// </summary>
     private void UpdateAgent(){
         timePassed += Time.deltaTime;
-        
         if(isStunned){
             agent.speed = 0f;
             stunTimer -= Time.deltaTime;
@@ -188,11 +209,15 @@ public class AgentController : MonoBehaviour
     private bool IsStillWaitingInArea(){
         return timeToSpendInArea > 0;
     }
-
-    private readonly float checkCooldown = 0.05f;
-    private float nextCheckTime = 0f;
+    /// <summary>
+    /// this starts by checking if the agent was stunned and isnt in the panic state yet if that is the case he will 
+    /// enter the panic state, then will check every "checkCooldown" if he was near the explosion or was near a panicking agent and if that is the case he will enter the~
+    /// panic state
+    /// </summary>
+    /// <returns></returns>
     private bool IsPanicking()
     {
+        
         if (wasStunned && !isPanicking)
         {
             isPanicking = true;
@@ -206,7 +231,9 @@ public class AgentController : MonoBehaviour
         }
         return isPanicking;
     }
-
+    /// <summary>
+    /// if he sees a panicking agent and isnt panicking yet he will enter the panick state
+    /// </summary>
     private void WasNearPanickingAgent()
     {
         if(!isPanicking)
@@ -223,7 +250,9 @@ public class AgentController : MonoBehaviour
             }
         }
     }
-
+    /// <summary>
+    /// if he sees a explosion and isnt panicking yet he will enter the panick state
+    /// </summary>
     private void SpottedExplosion()
     {
         if(!isPanicking)
@@ -238,6 +267,7 @@ public class AgentController : MonoBehaviour
 
     /// <summary>
     /// tries to find the most isolated spot around the area it was sent. 
+    /// This code had some AI help to be developed but the ideia was 100% ours.
     /// </summary>
     /// <returns></returns>
     private Vector3 FindMostIsolatedSpot()
@@ -264,7 +294,8 @@ public class AgentController : MonoBehaviour
         return bestPoint;
     }
     /// <summary>
-    /// Checks the position the agent is set to go and sees how close that position is to a agent
+    /// Checks the position the agent is set to go and sees how close that position is to a agent 
+    /// This code had AI help to be developed but the ideia was 100% ours.
     /// </summary>
     /// <param name="position"></param>
     /// <returns></returns>
@@ -291,11 +322,7 @@ public class AgentController : MonoBehaviour
     private Vector3 GetRandomPointInArea()
     {
         Bounds bounds = areaToGo.bounds;
-        return new Vector3(
-            Random.Range(bounds.min.x, bounds.max.x),
-            bounds.center.y,
-            Random.Range(bounds.min.z, bounds.max.z)
-        );
+        return new Vector3(Random.Range(bounds.min.x, bounds.max.x), bounds.center.y, Random.Range(bounds.min.z, bounds.max.z));
     }
     /// <summary>
     /// checks for collisions inside the area he intends to try to evade pushing around the area so in case he is pushing to much 
@@ -304,6 +331,7 @@ public class AgentController : MonoBehaviour
     /// <param name="other"></param>
     private void OnTriggerEnter(Collider other)
     {
+        //checks if is being pushed by another player and in case he is being pushed too much he will just stop
         if (other.gameObject != gameObject && other.gameObject.layer == LayerMask.NameToLayer("Agent")&&IsInsideRealDesiredArea())
         {
             pushes += 1;
@@ -321,6 +349,7 @@ public class AgentController : MonoBehaviour
         if (other.gameObject != gameObject && other.gameObject.layer == LayerMask.NameToLayer("Explosion"))
         {
             Destroy(gameObject);
+            agentsHandler.AddDeathToCounter();
         }
 
         //If inside shockwave, stun
@@ -483,7 +512,10 @@ public class AgentController : MonoBehaviour
             areaToGo = currentArea.PlacesHeCanGo[amountofplaces];
         }
     }
-
+    /// <summary>
+    /// sees what is the best exit to go to, so the agent wont get caught by the explosion and if he is trapped by explosions he will just stop
+    /// </summary>
+    /// <returns></returns>
     private Vector3 BestExit()
     {
         currentArea = parentAreas.GiveFastestValidPathToRoom(AgentState, agent);
@@ -497,7 +529,10 @@ public class AgentController : MonoBehaviour
         return GetRandomPointInArea();
     }
 
-
+    /// <summary>
+    /// changes the cost of the floor the agent shouldnt walk in a normal cenario so if it recieves false the floor wont be used by the agent if it recieves true it will 
+    /// </summary>
+    /// <param name="isWalkable"></param>
     private void SetEmergencyFloorWalkability(bool isWalkable)
     {
         if (isWalkable)
@@ -511,7 +546,9 @@ public class AgentController : MonoBehaviour
             agent.SetAreaCost(NavMesh.GetAreaFromName("Emergency"), 100f);
         }
     }
-    
+    /// <summary>
+    /// when he starts panicking his color will turn red so the "game" has some feedback
+    /// </summary>
     private void SetPanicColor()
     {
         agentRenderer.GetPropertyBlock(materialPropertyBlock);
