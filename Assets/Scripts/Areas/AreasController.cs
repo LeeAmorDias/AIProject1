@@ -45,7 +45,7 @@ public class AreasController : MonoBehaviour
     /// </summary>
     /// <param name="state"></param>
     /// <param name="agent"></param>
-    /// <returns></returns>
+    /// <returns>The closest available exit, or null if none is found</returns>
     public Rooms GiveFastestValidPathToRoom(Rooms.whatCanDo state, NavMeshAgent agent)
     {
         float bestPathLength = Mathf.Infinity;
@@ -53,6 +53,7 @@ public class AreasController : MonoBehaviour
 
         List<Rooms> matchingRooms = new List<Rooms> ();
         
+        //populates a list of rooms that match the given state
         foreach (Rooms room in allAreas){
             if(room.WhatToDo == state){
                 matchingRooms.Add(room);
@@ -62,11 +63,17 @@ public class AreasController : MonoBehaviour
         for (int i = 0; i<matchingRooms.Count; i++)
         {
             NavMeshPath path = new NavMeshPath();
+            //CalculatePath checks if it is possible for the agent to go to a
+            //designated position, in order for this to take into account the 
+            //explosions as they happen it is required that the explosions 
+            //carve the navmesh as they expand, which they do.
             if (agent.CalculatePath(matchingRooms[i].transform.position, path)
                 && path.status == NavMeshPathStatus.PathComplete)
                 {
                     float pathLength = GetPathLength(path);
 
+                    //stores the shortest path by comparing each with a previous
+                    //best and replacing it if it is shorter
                     if(pathLength < bestPathLength)
                     {
                         bestPathLength = pathLength;
@@ -74,20 +81,24 @@ public class AreasController : MonoBehaviour
                     }
                 }
         }
-
+        
+        //this method can return null if all exits are blocked by an explosion/fire
         return bestRoom;
     }
     /// <summary>
     /// recieves a navmesh path and calculates the length of it
     /// </summary>
     /// <param name="path"></param>
-    /// <returns></returns>
+    /// <returns>the length of the given path</returns>
     private float GetPathLength(NavMeshPath path)
     {
         float length = 0f;
+        //path.corners contains all the points of a path
         if(path.corners.Length < 2)
             return length;
 
+        //because we check a point and the one after it we need the -1 in
+        //the condition so we don't get an IndexOutOfRange Exception
         for(int i = 0; i<path.corners.Length-1; i++)
         {
             length += Vector3.Distance(path.corners[i], path.corners[i+1]);

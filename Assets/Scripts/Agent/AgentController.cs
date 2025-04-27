@@ -59,7 +59,7 @@ public class AgentController : MonoBehaviour
     private bool isStunned = false;
     private bool wasStunned = false;
     private bool isPanicking = false;
-    private bool inArea;
+
     private float timeToSpendInArea;
     private float originalSpeed;
 
@@ -140,10 +140,13 @@ public class AgentController : MonoBehaviour
             AgentState = Rooms.whatCanDo.Escape;
             agent.SetDestination(BestExit());
         }
+        //If the current path the agent is taking has become invalid due to 
+        //being blocked by an explosion/fire, recalculate a new path
         if(agent.pathStatus == NavMeshPathStatus.PathInvalid)
         {
             agent.SetDestination(BestExit());
         }
+        //If agent reaches the exit destroy him, because he left
         if(IsInsideRealDesiredArea()){
             Destroy(gameObject);
         }
@@ -210,19 +213,21 @@ public class AgentController : MonoBehaviour
         return timeToSpendInArea > 0;
     }
     /// <summary>
-    /// this starts by checking if the agent was stunned and isnt in the panic state yet if that is the case he will 
+    /// this starts by checking if the agent was stunned and isn't in the panic state yet if that is the case he will 
     /// enter the panic state, then will check every "checkCooldown" if he was near the explosion or was near a panicking agent and if that is the case he will enter the~
     /// panic state
     /// </summary>
     /// <returns></returns>
     private bool IsPanicking()
     {
-        
+        //makes an agent panicked after he's done being stunned
         if (wasStunned && !isPanicking)
         {
             isPanicking = true;
             SetPanicColor();
         }
+        //These checks can be a bit performance intensive, so they only run
+        //after a cooldown and not every frame
         if(Time.time >= nextCheckTime)
         {
             SpottedExplosion();
@@ -232,12 +237,16 @@ public class AgentController : MonoBehaviour
         return isPanicking;
     }
     /// <summary>
-    /// if he sees a panicking agent and isnt panicking yet he will enter the panick state
+    /// if he sees a panicking agent and isn't panicking yet he will enter the panic state
     /// </summary>
     private void WasNearPanickingAgent()
     {
         if(!isPanicking)
         {
+            //OverlapSphereNonAlloc makes use of a provided buffer to store
+            //Collider hits, this is more performant than the standard OverlapSphere
+            //that is always creating new objects to store the results thus triggering
+            //garbage collection a lot
             int count = Physics.OverlapSphereNonAlloc(transform.position, samplingRadius, buffer, LayerMask.GetMask(agentLayer));
             for (int i = 0; i < count; i++)
             {
@@ -251,7 +260,7 @@ public class AgentController : MonoBehaviour
         }
     }
     /// <summary>
-    /// if he sees a explosion and isnt panicking yet he will enter the panick state
+    /// if he sees a explosion and isn't panicking yet he will enter the panic state
     /// </summary>
     private void SpottedExplosion()
     {
@@ -325,6 +334,7 @@ public class AgentController : MonoBehaviour
         return new Vector3(Random.Range(bounds.min.x, bounds.max.x), bounds.center.y, Random.Range(bounds.min.z, bounds.max.z));
     }
     /// <summary>
+    /// Logic for what to do when entering various trigger colliders
     /// checks for collisions inside the area he intends to try to evade pushing around the area so in case he is pushing to much 
     /// he just stops and stays in that spot of the area since that area is already where he wanted to go.
     /// </summary>
