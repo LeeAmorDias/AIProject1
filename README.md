@@ -160,6 +160,7 @@ and when disaster strikes they display some sense of self preservation.
 [4] <https://www.youtube.com/watch?v=igrHPCTFZXM>  
 [5] França, R.D., Marietto, M.D., Margarethe, & Steinberger, B. (2009). A Multi-agent Model for Panic Behavior in Crowds.  
 [6] Dumitrescu, C., Radu, V., Gheorghe, R., Tăbîrcă, A.-I., Ștefan, M.-C., & Manea, L. (2024). Crowd Panic Behavior Simulation Using Multi-Agent Modeling. Electronics, 13(18), 3622. <https://doi.org/10.3390/electronics13183622>  
-[7] Wagner, N., Agrawal, V. (2014) An agent-based simulation system for concert venue crowd evacuation modeling in the presence of a fire disaster. <https://doi.org/10.1016/j.eswa.2013.10.013>
-[8] in the method GetDistanceToClosestAgent() AI was used to help on the code but the ideia was ours.
-[9] in the method FindMostIsolatedSpot() AI was used to help on the code but the ideia was ours.
+[7] Wagner, N., Agrawal, V. (2014) An agent-based simulation system for concert venue crowd evacuation modeling in the presence of a fire disaster. <https://doi.org/10.1016/j.eswa.2013.10.013>  
+[8] in the method GetDistanceToClosestAgent() AI was used to help on the code but the ideia was ours.  
+[9] in the method FindMostIsolatedSpot() AI was used to help on the code but the ideia was ours.  
+[10] we also used AI to help us debug and fix some performance issues we were having. Basically explaining how to make effective use of the Profiler.
