@@ -23,6 +23,8 @@ public class AgentController : MonoBehaviour
     [SerializeField]
     private float timePerUpdate;
     [SerializeField]
+    private float stunTimer = 2f;
+    [SerializeField]
     private int minAmountOfHungerToTakePerUpdate;
     [SerializeField]
     private int maxAmountOfHungerToTakePerUpdate;
@@ -37,15 +39,21 @@ public class AgentController : MonoBehaviour
 
     private BoxCollider areaToGo;
     private Rooms currentArea;
+    private Collider[] buffer = new Collider[20]; 
     private int hunger;
     private int tiredness;
     private int hungerLevel;
     private int tirednessLevel;
+    private int deathCounter;
     private string agentLayer = "Agent";
     private int pushes = 0; 
-    private bool stopped = false;   
+    private bool stopped = false;
+    private bool isStunned = false;
+    private bool wasStunned = false;
+    private bool isPanicking = false;
     private bool inArea;
     private float timeToSpendInArea;
+    private float originalSpeed;
     // The root of the decision tree
     private IDecisionTreeNode root;
 
@@ -64,6 +72,7 @@ public class AgentController : MonoBehaviour
     {
         navMeshSurface = FindFirstObjectByType<NavMeshSurface>();
         parentAreas = GameObject.FindFirstObjectByType<AreasController>();
+        originalSpeed = agent.speed;
         hunger = maxHunger;
         tiredness = maxTiredness;
         RandomizeHungerAndTiredness();
@@ -114,8 +123,12 @@ public class AgentController : MonoBehaviour
         agent.SetDestination(bestSpot);
     }
     private void PanicAction(){
-
+        SetEmergencyFloorWalkability(true);
+        AgentState = Rooms.whatCanDo.Escape;
+        agent.SetDestination(ClosestExit());
     }
+
+    
     private void WaitAction(){
         if (IsAroundDesiredArea())
             timeToSpendInArea -= Time.deltaTime;
@@ -125,6 +138,18 @@ public class AgentController : MonoBehaviour
     /// </summary>
     private void UpdateAgent(){
         timePassed += Time.deltaTime;
+        
+        if(isStunned){
+            agent.speed = 0f;
+            stunTimer -= Time.deltaTime;
+        }
+        if(isStunned && stunTimer < 0f){
+            isStunned = false;
+            wasStunned = true;
+        }
+        if(wasStunned)
+            agent.speed = originalSpeed * 0.5f;
+        
         if(timePassed > timePerUpdate){
             timePassed = 0;
             if(currentArea.WhatToDo != Rooms.whatCanDo.Eat)
@@ -151,8 +176,40 @@ public class AgentController : MonoBehaviour
     }
     private bool IsPanicking()
     {
-        return AgentState == Rooms.whatCanDo.Escape;
+        if (wasStunned)
+            isPanicking = true;
+        spottedExplosion();
+        wasNearPanickingAgent();
+        
+        return isPanicking;
     }
+
+    private void wasNearPanickingAgent()
+    {
+        if(!isPanicking && timePassed > timePerUpdate)
+        {
+            int count = Physics.OverlapSphereNonAlloc(transform.position, samplingRadius, buffer, LayerMask.GetMask(agentLayer));
+            for (int i = 0; i < count; i++)
+            {
+                Collider agent = buffer[i];
+                if(agent.GetComponent<AgentController>().isPanicking)
+                {
+                    isPanicking = true;
+                }
+            }
+        }
+    }
+
+    private void spottedExplosion()
+    {
+        if(!isPanicking && timePassed > timePerUpdate)
+        {
+            int count = Physics.OverlapSphereNonAlloc(transform.position, samplingRadius, buffer,LayerMask.GetMask("Explosion"));
+            if(count>0)
+                isPanicking = true;
+        }
+    }
+
     /// <summary>
     /// tries to find the most isolated spot around the area it was sent. 
     /// </summary>
@@ -234,6 +291,20 @@ public class AgentController : MonoBehaviour
             }
         }
 
+        //If inside explosion, die
+        if (other.gameObject != gameObject && other.gameObject.layer == LayerMask.NameToLayer("Explosion"))
+        {
+            Destroy(gameObject);
+            deathCounter++;
+        }
+
+        //If inside shockwave, stun
+        if (other.gameObject != gameObject && other.gameObject.layer == LayerMask.NameToLayer("Shockwave"))
+        {
+            isStunned = true;
+        }
+
+        
     }
     /// <summary>
     /// Checks if the agent is in the real area he want to go 
@@ -388,21 +459,32 @@ public class AgentController : MonoBehaviour
         }
     }
 
+    private Vector3 ClosestExit()
+    {
+        //this is kinda ignoring if there is a fire in the closest path
+        //need to fix that later
+        currentArea = parentAreas.GiveClosestRoomWithMatchingState(AgentState, transform.position);
+        areaToGo = currentArea.WhereToGo;
+        return GetRandomPointInArea();
+    }
+
+
     private void SetEmergencyFloorWalkability(bool isWalkable)
     {
         if (isWalkable)
         {
-            // Allow walking through everything
-            agent.areaMask = NavMesh.AllAreas;
+            agent.SetAreaCost(NavMesh.GetAreaFromName("Walkable"), 1f);
+            agent.SetAreaCost(NavMesh.GetAreaFromName("Emergency"), 1f);
         }
         else
         {
-            // Avoid Not Walkable (area index 1)
-            int walkableMask = 1 << NavMesh.GetAreaFromName("Walkable");
-            agent.areaMask = walkableMask;
+            agent.SetAreaCost(NavMesh.GetAreaFromName("Walkable"), 1f);
+            agent.SetAreaCost(NavMesh.GetAreaFromName("Emergency"), 100f);
         }
-
-
-        navMeshSurface.BuildNavMesh();
+    }
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, samplingRadius);
     }
 }
